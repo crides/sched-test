@@ -1,0 +1,18 @@
+[package]
+name = "sched_test"
+version = "0.1.0"
+authors = ["crides <zhuhaoqing@live.cn>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rusqlite = "^0.20"
+diesel = { version = "1.4.3", features = ["sqlite", "chrono"] }
+chrono = { version = "*", features = ["serde"] }
+# clap = "*"
+rlua = "^0.16"
+rustyline = "5.0.6"
+serde = "*"
+serde_derive = "*"
+rlua_serde = "*"
