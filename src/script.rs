@@ -1,63 +1,76 @@
 use std::sync::{Arc, RwLock};
 
-use rlua::{Lua, Error, MultiValue};
+use fragile::Fragile;
+use rlua::{Error, Lua, MultiValue};
 use rustyline::Editor;
 
 use crate::storage::LogStorage;
 
 pub struct ScriptContext {
     lua: Lua,
-    storage: Arc<RwLock<LogStorage>>,
 }
 
 impl ScriptContext {
     pub fn new() -> ScriptContext {
-        ScriptContext {
-            lua: Lua::new(),
-            storage: Arc::new(RwLock::new(LogStorage::new())),
-        }
-    }
+        let mut ctx = ScriptContext { lua: Lua::new() };
 
-    pub fn init_lua(&mut self) {
-        self.lua.context(|ctx| {
+        ctx.lua.context(|ctx| {
             let globals = ctx.globals();
 
-            let lua_storage = Arc::clone(&self.storage);
-            let add_log = ctx.create_function_mut(|_, (name, desc): (String, String)| {
-                dbg!(name, desc);
-                // lua_storage.write().unwrap().add_log(&name, &desc);
-                Ok(())
-            }).unwrap();
-            globals.set("add_log", add_log).unwrap();
+            let storage = Arc::new(RwLock::new(Fragile::new(LogStorage::new())));
+            let lua_storage = Arc::clone(&storage);
+            globals
+                .set(
+                    "add_log",
+                    ctx.create_function_mut(move |_, (name, desc): (String, String)| {
+                        lua_storage.write().unwrap().get_mut().add_log(&name, &desc);
+                        Ok(())
+                    })
+                    .unwrap(),
+                )
+                .unwrap();
 
-            let lua_storage = Arc::clone(&self.storage);
-            let add_prop = ctx.create_function_mut(|_, (id, key, val): (i32, String, String)| {
-                dbg!(id, key, val);
-                // lua_storage.write().unwrap().add_prop(id, &key, &val);
-                Ok(())
-            }).unwrap();
-            globals.set("add_prop", add_prop).unwrap();
+            let lua_storage = Arc::clone(&storage);
+            globals
+                .set(
+                    "add_prop",
+                    ctx.create_function_mut(move |_, (id, key, val): (i32, String, String)| {
+                        lua_storage
+                            .write()
+                            .unwrap()
+                            .get_mut()
+                            .add_prop(id, &key, &val);
+                        Ok(())
+                    })
+                    .unwrap(),
+                )
+                .unwrap();
 
-            let lua_storage = Arc::clone(&self.storage);
-            let get_logs = ctx.create_function_mut(|_, ()| {
-                println!("get_logs");
-                // Ok(lua_storage.read().unwrap().get_logs())
-                Ok(())
-            }).unwrap();
-            globals.set("get_logs", get_logs).unwrap();
+            let lua_storage = Arc::clone(&storage);
+            globals
+                .set(
+                    "get_logs",
+                    ctx.create_function_mut(move |_, ()| {
+                        Ok(lua_storage.read().unwrap().get().get_logs())
+                    })
+                    .unwrap(),
+                )
+                .unwrap();
 
-            let lua_storage = Arc::clone(&self.storage);
-            let get_props_for = ctx.create_function_mut(|_, id: i32| {
-                println!("get_props_for");
-                dbg!(id);
-                // Ok(lua_storage.read().unwrap().get_props_for(id))
-                Ok(())
-            }).unwrap();
-            globals.set("get_props_for", get_props_for).unwrap();
-
+            let lua_storage = Arc::clone(&storage);
+            globals
+                .set(
+                    "get_props_for",
+                    ctx.create_function_mut(move |_, id: i32| {
+                        Ok(lua_storage.read().unwrap().get().get_props_for(id))
+                    })
+                    .unwrap(),
+                )
+                .unwrap();
         });
+        ctx
     }
-    
+
     pub fn repl(&mut self) {
         self.lua.context(|ctx| {
             let mut editor = Editor::<()>::new();

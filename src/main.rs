@@ -8,6 +8,5 @@ mod script;
 
 fn main() {
     let mut script_ctx = script::ScriptContext::new();
-    script_ctx.init_lua();
     script_ctx.repl();
 }
