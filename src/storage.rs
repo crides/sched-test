@@ -5,7 +5,7 @@ use diesel::{
     sqlite::SqliteConnection,
 };
 
-mod model;
+pub mod model;
 mod schema;
 
 use model::*;
@@ -18,16 +18,17 @@ impl LogStorage {
         LogStorage(SqliteConnection::establish("test.db").unwrap())
     }
 
-    pub fn add_log(&mut self, name: &str, desc: &str) {
+    pub fn add_log(&mut self, name: &str, desc: &str) -> i32 {
         diesel::insert_into(logs::table)
             .values(&NewLog {
                 name,
                 desc,
             })
             .execute(&self.0).unwrap();
+        logs::table.select(diesel::dsl::max(logs::id)).first::<Option<i32>>(&self.0).unwrap().unwrap()
     }
 
-    pub fn add_prop(&mut self, id: i32, key: &str, val: &str) {
+    pub fn set_prop(&mut self, id: i32, key: &str, val: &str) {
         diesel::insert_into(attrs::table)
             .values(&NewAttr {
                 id,
@@ -35,6 +36,13 @@ impl LogStorage {
                 val,
             })
             .execute(&self.0).unwrap();
+    }
+
+    pub fn add_log_with_props(&mut self, name: &str, desc: &str, props: &HashMap<String, String>) {
+        let id = self.add_log(name, desc);
+        for (key, val) in props.iter() {
+            self.set_prop(id, key, val);
+        }
     }
 
     pub fn get_logs(&self) -> Vec<Log> {

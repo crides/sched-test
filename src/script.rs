@@ -1,128 +1,76 @@
-use std::sync::{Arc, RwLock};
+mod api;
 
-use rlua::{
-    Error, MultiValue,
-    prelude::*,
-};
+use std::{collections::HashMap, sync::Mutex};
+
+use rlua::{prelude::*, Error, MultiValue};
 use rustyline::Editor;
 
-use crate::storage::LogStorage;
-
-struct Scope<'a, 'b, 'c> {
-    ctx: LuaContext<'a>,
-    globals: LuaTable<'a>,
-    scope: &'c LuaScope<'a, 'b>,
+pub struct ScriptContext {
+    lua: Lua,
 }
 
-impl<'a, 'b, 'c> Scope<'a, 'b, 'c> {
-    fn add_apis(&self) {
-        let storage = Arc::new(RwLock::new(LogStorage::new()));
-        let lua_storage = Arc::clone(&storage);
-        self.globals
-            .set(
-                "add_log",
-                self.scope.create_function_mut(move |_, (name, desc): (String, String)| {
-                    lua_storage.write().unwrap().add_log(&name, &desc);
-                    Ok(())
-                })
-                .unwrap(),
-            )
-            .unwrap();
-
-        let lua_storage = Arc::clone(&storage);
-        self.globals
-            .set(
-                "add_prop",
-                self.scope.create_function_mut(move |_, (id, key, val): (i32, String, String)| {
-                    lua_storage
-                        .write()
-                        .unwrap()
-                        .add_prop(id, &key, &val);
-                    Ok(())
-                })
-                .unwrap(),
-            )
-            .unwrap();
-
-        let lua_storage = Arc::clone(&storage);
-        self.globals
-            .set(
-                "get_logs",
-                self.scope.create_function_mut(move |_, ()| {
-                    Ok(lua_storage.read().unwrap().get_logs())
-                })
-                .unwrap(),
-            )
-            .unwrap();
-
-        let lua_storage = Arc::clone(&storage);
-        self.globals
-            .set(
-                "get_props_for",
-                self.scope.create_function_mut(move |_, id: i32| {
-                    Ok(lua_storage.read().unwrap().get_props_for(id))
-                })
-                .unwrap(),
-            )
-            .unwrap();
+impl ScriptContext {
+    pub fn new() -> Self {
+        Self { lua: Lua::new() }
     }
 
-    fn repl(&self) {
-        let mut editor = Editor::<()>::new();
-        loop {
-            let mut prompt = "> ";
-            let mut line = String::new();
-            loop {
-                match editor.readline(prompt) {
-                    Ok(input) => line.push_str(&input),
-                    Err(_) => return,
-                }
+    pub fn init(&self) -> LuaResult<()> {
+        self.lua.context(|ctx| {
+            let globals = ctx.globals();
+            globals.set("add_log_type", ctx.create_function(api::add_log_type)?)?;
+            globals.set("add_log_types", ctx.create_function(api::add_log_types)?)?;
+            globals.set("add_log", ctx.create_function(api::add_log)?)?;
+            globals.set("add_log_with_props", ctx.create_function(api::add_log_with_props)?)?;
+            globals.set("get_logs", ctx.create_function(api::get_logs)?)?;
+            globals.set("set_prop", ctx.create_function(api::set_prop)?)?;
+            globals.set("get_props_for", ctx.create_function(api::get_props_for)?)?;
+            Ok(())
+        })
+    }
 
-                match self.ctx.load(&line).eval::<MultiValue>() {
-                    Ok(values) => {
-                        editor.add_history_entry(line);
-                        println!(
-                            "{}",
-                            values
-                                .iter()
-                                .map(|value| format!("{:?}", value))
-                                .collect::<Vec<_>>()
-                                .join("\t")
-                        );
-                        break;
+    pub fn repl(&self) {
+        self.lua.context(|ctx| {
+            let mut editor = Editor::<()>::new();
+            loop {
+                let mut prompt = "> ";
+                let mut line = String::new();
+                loop {
+                    match editor.readline(prompt) {
+                        Ok(input) => line.push_str(&input),
+                        Err(_) => return,
                     }
-                    Err(Error::SyntaxError {
-                        incomplete_input: true,
-                        ..
-                    }) => {
-                        // continue reading input and append it to `line`
-                        line.push_str("\n"); // separate input lines
-                        prompt = ">> ";
-                    }
-                    Err(e) => {
-                        eprintln!("error: {}", e);
-                        break;
+
+                    match ctx.load(&line).eval::<MultiValue>() {
+                        Ok(values) => {
+                            editor.add_history_entry(line);
+                            println!(
+                                "{}",
+                                values
+                                    .iter()
+                                    .map(|value| format!("{:?}", value))
+                                    .collect::<Vec<_>>()
+                                    .join("\t")
+                            );
+                            break;
+                        }
+                        Err(Error::SyntaxError {
+                            incomplete_input: true,
+                            ..
+                        }) => {
+                            // continue reading input and append it to `line`
+                            line.push_str("\n"); // separate input lines
+                            prompt = ">> ";
+                        }
+                        Err(e) => {
+                            eprintln!("error: {}", e);
+                            if let LuaError::CallbackError { cause: c, .. } = e {
+                                println!("Caused by: {}", c);
+                            }
+                            break;
+                        }
                     }
                 }
             }
-        }
-    }
-}
-
-pub fn repl() {
-    let lua = Lua::new();
-
-    lua.context(|ctx| {
-        let globals = ctx.globals();
-
-        ctx.scope(|scope| {
-            let scope = Scope {
-                ctx,
-                globals,
-                scope,
-            };
-            scope.add_apis();
-            scope.repl();
         });
-    });
+    }
 }
