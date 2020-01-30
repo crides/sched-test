@@ -79,7 +79,7 @@ impl ScriptContext {
                                 "{}",
                                 values
                                     .iter()
-                                    .map(|value| format_value(value))
+                                    .map(|value| format_value(value, &ctx))
                                     .collect::<Vec<_>>()
                                     .join("\t")
                             );

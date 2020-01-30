@@ -38,7 +38,7 @@ impl fmt::Display for ErrorKind {
             ErrorKind::MissingField { typ, field } => {
                 write!(f, "Missing field '{}' in type '{}'", field, typ)
             }
-            ErrorKind::InvalidLogType(s) => write!(f, "{}", s),
+            ErrorKind::InvalidLogType(s) => write!(f, "Invalid log type: '{}'", s),
             ErrorKind::LuaError(e) => e.fmt(f),
         }
     }
