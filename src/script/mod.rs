@@ -4,6 +4,7 @@ use rlua::{prelude::*, Error, MultiValue};
 use rustyline::Editor;
 
 use crate::api;
+use lua::format_value;
 
 pub struct ScriptContext {
     lua: Lua,
@@ -78,7 +79,7 @@ impl ScriptContext {
                                 "{}",
                                 values
                                     .iter()
-                                    .map(|value| format!("{:?}", value))
+                                    .map(|value| format_value(value))
                                     .collect::<Vec<_>>()
                                     .join("\t")
                             );

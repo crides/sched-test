@@ -15,6 +15,7 @@ rlua = "^0.16"
 rustyline = "5.0.6"
 serde = "*"
 serde_derive = "*"
+serde_json = "*"
 # rlua_serde = "*"
 # Currently `rlua_serde` won't convert an empty table to an empty vec, so using
 # this instead, until the pull request (#9) is merged (also see issue #8)
