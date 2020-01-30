@@ -1,12 +1,8 @@
 use chrono::naive::NaiveDateTime;
-use rlua::{
-    prelude::*,
-    Context,
-    Value,
-};
+use rlua::{prelude::*, Context, Value};
 use rlua_serde::to_value;
 
-use super::schema::{logs, attrs};
+use super::schema::{attrs, logs};
 
 #[derive(Queryable, Serialize)]
 pub struct Log {

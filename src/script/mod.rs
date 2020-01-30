@@ -1,9 +1,9 @@
-mod api;
-
-use std::{collections::HashMap, sync::Mutex};
+mod lua;
 
 use rlua::{prelude::*, Error, MultiValue};
 use rustyline::Editor;
+
+use crate::api;
 
 pub struct ScriptContext {
     lua: Lua,
@@ -17,13 +17,44 @@ impl ScriptContext {
     pub fn init(&self) -> LuaResult<()> {
         self.lua.context(|ctx| {
             let globals = ctx.globals();
-            globals.set("add_log_type", ctx.create_function(api::add_log_type)?)?;
-            globals.set("add_log_types", ctx.create_function(api::add_log_types)?)?;
-            globals.set("add_log", ctx.create_function(api::add_log)?)?;
-            globals.set("add_log_with_props", ctx.create_function(api::add_log_with_props)?)?;
-            globals.set("get_logs", ctx.create_function(api::get_logs)?)?;
-            globals.set("set_prop", ctx.create_function(api::set_prop)?)?;
-            globals.set("get_props_for", ctx.create_function(api::get_props_for)?)?;
+            globals.set(
+                "add_log_type",
+                ctx.create_function(|_, lt| Ok(api::add_log_type(lt)))?,
+            )?;
+            globals.set(
+                "add_log_types",
+                ctx.create_function(|_, lts| Ok(api::add_log_types(lts)))?,
+            )?;
+            globals.set(
+                "add_log",
+                ctx.create_function(|_, (s1, s2): (String, String)| Ok(api::add_log(s1, s2)))?,
+            )?;
+            globals.set(
+                "add_log_with_props",
+                ctx.create_function(|_, (s1, s2, p): (String, String, _)| {
+                    Ok(api::add_log_with_props(s1, s2, &p))
+                })?,
+            )?;
+            globals.set(
+                "get_logs",
+                ctx.create_function(|_, ()| Ok(api::get_logs()))?,
+            )?;
+            globals.set(
+                "set_prop",
+                ctx.create_function(|_, (id, k, v): (_, String, String)| {
+                    Ok(api::set_prop(id, k, v))
+                })?,
+            )?;
+            globals.set(
+                "get_props_for",
+                ctx.create_function(|_, id| Ok(api::get_props_for(id)))?,
+            )?;
+            globals.set(
+                "add_log_with_type",
+                ctx.create_function(|_, (s1, s2, t, p, c): (String, String, _, _, _)| {
+                    api::add_log_with_type(s1, s2, t, p, c).map_err(|e| e.into())
+                })?,
+            )?;
             Ok(())
         })
     }
