@@ -127,7 +127,10 @@ where
             if val.is_none() {
                 return Err(Error {
                     method: "add_log_with_type".into(),
-                    kind: ErrorKind::MissingField { typ: typ.into(), field: key.into() },
+                    kind: ErrorKind::MissingField {
+                        typ: typ.into(),
+                        field: key.into(),
+                    },
                 });
             }
         }

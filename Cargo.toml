@@ -11,11 +11,11 @@ rusqlite = "^0.20"
 diesel = { version = "1.4.3", features = ["sqlite", "chrono"] }
 chrono = { version = "*", features = ["serde"] }
 # clap = "*"
-rlua = "^0.16"
+rlua = "*"
 rustyline = "5.0.6"
 serde = "*"
 serde_derive = "*"
 # Currently `rlua_serde` won't convert an empty table to an empty vec, so using
 # this instead, until the pull request (#9) is merged (also see issue #8)
-rlua_serde = { git = "https://github.com/clouds56/rlua_serde", branch = "patch-2" }
+rlua_serde = "*"
 lazy_static = "*"

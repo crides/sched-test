@@ -45,7 +45,7 @@ impl LuaFormatter {
             LuaValue::Number(f) => s.push_str(&f.to_string()),
             LuaValue::String(_s) => {
                 s.push_str(&format!("{:?}", _s.to_str().unwrap()));
-            },
+            }
             LuaValue::LightUserData(d) => s.push_str(&format!("{:?}", d)),
             LuaValue::UserData(d) => s.push_str(&format!("{:?}", d)),
             LuaValue::Function(f) => s.push_str(&format!("{:?}", f)),
@@ -73,7 +73,7 @@ impl LuaFormatter {
                     s.push_str(&" ".repeat(self.indent * self.indent_size));
                 }
                 s.push_str("}");
-            },
+            }
             LuaValue::Error(e) => s.push_str(&format!("{:?}", e)),
         }
     }
