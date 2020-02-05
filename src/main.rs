@@ -6,5 +6,9 @@ fn main() {
         eprintln!("{}", e);
         return;
     };
-    ctx.repl();
+    if let Err(e) = ctx.run_file("/home/steven/.config/sched/init.lua") {
+        eprintln!("{}", e);
+        return;
+    };
+    // ctx.repl();
 }

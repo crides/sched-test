@@ -1,3 +1,5 @@
+//! This module contains all the Rust side of the logging API, that is in Rust types and can be
+//! easily used by Rust code
 pub mod error;
 
 use std::{collections::HashMap, sync::Mutex};
@@ -6,17 +8,19 @@ use crate::storage::{model::Log, LogStorage};
 
 use error::*;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogAttr {
     #[serde(default)]
     hidden: bool,
     default: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+pub type LogAttrs = HashMap<String, LogAttr>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogType {
     name: String,
-    attrs: HashMap<String, LogAttr>,
+    attrs: LogAttrs,
 }
 
 pub type LogTypes = HashMap<String, HashMap<String, LogAttr>>;
@@ -74,12 +78,23 @@ pub fn add_log_type(typ: LogType) {
         .unwrap()
         .log_types
         .insert(typ.name, typ.attrs);
-    dbg!(&API_STATE.lock().unwrap().log_types);
 }
 
 pub fn add_log_types(typ: LogTypes) {
     API_STATE.lock().unwrap().log_types.extend(typ);
-    dbg!(&API_STATE.lock().unwrap().log_types);
+}
+
+pub fn get_log_type<S: AsRef<str>>(key: S) -> Option<LogAttrs> {
+    API_STATE
+        .lock()
+        .unwrap()
+        .log_types
+        .get(key.as_ref())
+        .cloned()
+}
+
+pub fn get_log_types() -> LogTypes {
+    API_STATE.lock().unwrap().log_types.clone()
 }
 
 pub fn add_log_with_type<S1, S2>(

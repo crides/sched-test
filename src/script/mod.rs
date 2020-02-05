@@ -1,10 +1,57 @@
 mod lua;
 
+use std::fs::read_to_string;
+use std::path::Path;
+
 use rlua::{prelude::*, Error, MultiValue};
-use rustyline::Editor;
+use rustyline::{Config, Editor};
 
 use crate::api;
 use lua::format_value;
+
+pub fn repl(ctx: LuaContext) {
+    let mut editor = Editor::<()>::with_config(Config::builder().tab_stop(4).build());
+    loop {
+        let mut prompt = "> ";
+        let mut line = String::new();
+        loop {
+            match editor.readline(prompt) {
+                Ok(input) => line.push_str(&input),
+                Err(_) => return,
+            }
+
+            match ctx.load(&line).eval::<MultiValue>() {
+                Ok(values) => {
+                    editor.add_history_entry(line);
+                    println!(
+                        "{}",
+                        values
+                            .iter()
+                            .map(|value| format_value(value, &ctx))
+                            .collect::<Vec<_>>()
+                            .join("\t")
+                    );
+                    break;
+                }
+                Err(Error::SyntaxError {
+                    incomplete_input: true,
+                    ..
+                }) => {
+                    // continue reading input and append it to `line`
+                    line.push_str("\n"); // separate input lines
+                    prompt = ">> ";
+                }
+                Err(e) => {
+                    eprintln!("error: {}", e);
+                    if let LuaError::CallbackError { cause: c, .. } = e {
+                        println!("Caused by: {}", c);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
 
 pub struct ScriptContext {
     lua: Lua,
@@ -15,9 +62,35 @@ impl ScriptContext {
         Self { lua: Lua::new() }
     }
 
+    pub fn run_file<P: AsRef<Path>>(&self, path: P) -> LuaResult<()> {
+        let code = read_to_string(&path).map_err(LuaError::external)?;
+        self.lua.context(|ctx| {
+            let globals = ctx.globals();
+            let package: LuaTable = globals.get("package").unwrap();
+            let mut package_path: String = package.get("path").unwrap();
+            package_path.push_str(
+                ";/home/steven/.config/sched/?.lua;/home/steven/.config/sched/?/init.lua",
+            );
+            package.set("path", package_path).unwrap();
+            ctx.load(&code)
+                .set_name(path.as_ref().to_str().unwrap())
+                .unwrap()
+                .exec()
+        })
+    }
+
     pub fn init(&self) -> LuaResult<()> {
         self.lua.context(|ctx| {
             let globals = ctx.globals();
+            globals.set(
+                "pprint",
+                ctx.create_function(|ctx, lt| Ok(lua::pprint(&lt, &ctx)))?,
+            )?;
+            globals.set("repl", ctx.create_function(|ctx, ()| Ok(repl(ctx)))?)?;
+            globals.set(
+                "readline",
+                ctx.create_function(|_, p| Ok(lua::readline(p)))?,
+            )?;
             globals.set(
                 "add_log_type",
                 ctx.create_function(|_, lt| Ok(api::add_log_type(lt)))?,
@@ -25,6 +98,14 @@ impl ScriptContext {
             globals.set(
                 "add_log_types",
                 ctx.create_function(|_, lts| Ok(api::add_log_types(lts)))?,
+            )?;
+            globals.set(
+                "get_log_type",
+                ctx.create_function(|_, key: String| Ok(api::get_log_type(key)))?,
+            )?;
+            globals.set(
+                "get_log_types",
+                ctx.create_function(|_, ()| Ok(api::get_log_types()))?,
             )?;
             globals.set(
                 "add_log",
@@ -62,47 +143,7 @@ impl ScriptContext {
 
     pub fn repl(&self) {
         self.lua.context(|ctx| {
-            let mut editor = Editor::<()>::new();
-            loop {
-                let mut prompt = "> ";
-                let mut line = String::new();
-                loop {
-                    match editor.readline(prompt) {
-                        Ok(input) => line.push_str(&input),
-                        Err(_) => return,
-                    }
-
-                    match ctx.load(&line).eval::<MultiValue>() {
-                        Ok(values) => {
-                            editor.add_history_entry(line);
-                            println!(
-                                "{}",
-                                values
-                                    .iter()
-                                    .map(|value| format_value(value, &ctx))
-                                    .collect::<Vec<_>>()
-                                    .join("\t")
-                            );
-                            break;
-                        }
-                        Err(Error::SyntaxError {
-                            incomplete_input: true,
-                            ..
-                        }) => {
-                            // continue reading input and append it to `line`
-                            line.push_str("\n"); // separate input lines
-                            prompt = ">> ";
-                        }
-                        Err(e) => {
-                            eprintln!("error: {}", e);
-                            if let LuaError::CallbackError { cause: c, .. } = e {
-                                println!("Caused by: {}", c);
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
+            repl(ctx);
         });
     }
 }
