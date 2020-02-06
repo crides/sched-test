@@ -19,3 +19,4 @@ serde_derive = "*"
 # this instead, until the pull request (#9) is merged (also see issue #8)
 rlua_serde = "*"
 lazy_static = "*"
+dirs = "*"

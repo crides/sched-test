@@ -370,6 +370,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "diesel",
+ "dirs",
  "lazy_static",
  "rlua",
  "rlua_serde",
