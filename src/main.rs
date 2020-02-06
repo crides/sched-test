@@ -1,5 +1,8 @@
+use std::fs;
+
+use dirs::config_dir;
+
 use sched_test::*;
-use dirs::home_dir;
 
 fn main() {
     let ctx = script::ScriptContext::new();
@@ -7,9 +10,15 @@ fn main() {
         eprintln!("{}", e);
         return;
     };
-    let mut init_file = home_dir().unwrap();
-    init_file.push(".config/sched/init.lua");
-    if let Err(e) = ctx.run_file(init_file) {
+    let config_dir = config_dir().unwrap().join("sched");
+    if !config_dir.is_dir() {
+        if let Err(e) = fs::create_dir_all(&config_dir) {
+            eprintln!("{}", e);
+            return;
+        }
+    }
+    let init_file = config_dir.join("init.lua");
+    if let Err(e) = ctx.run_init_file(init_file) {
         eprintln!("{}", e);
         return;
     };

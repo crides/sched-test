@@ -1,8 +1,10 @@
 mod lua;
 
 use std::fs::read_to_string;
+use std::io::Error as IoError;
 use std::path::Path;
 
+use either::*;
 use rlua::{prelude::*, Error, MultiValue};
 use rustyline::{Config, Editor};
 
@@ -62,21 +64,27 @@ impl ScriptContext {
         Self { lua: Lua::new() }
     }
 
-    pub fn run_file<P: AsRef<Path>>(&self, path: P) -> LuaResult<()> {
-        let code = read_to_string(&path).map_err(LuaError::external)?;
-        self.lua.context(|ctx| {
-            let globals = ctx.globals();
-            let package: LuaTable = globals.get("package").unwrap();
-            let mut package_path: String = package.get("path").unwrap();
-            package_path.push_str(
-                ";/home/steven/.config/sched/?.lua;/home/steven/.config/sched/?/init.lua",
-            );
-            package.set("path", package_path).unwrap();
-            ctx.load(&code)
-                .set_name(path.as_ref().to_str().unwrap())
-                .unwrap()
-                .exec()
-        })
+    pub fn run_init_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Either<IoError, LuaError>> {
+        let code = read_to_string(&path).map_err(Left)?;
+        self.lua
+            .context(|ctx| {
+                let globals = ctx.globals();
+                let package: LuaTable = globals.get("package").unwrap();
+                let package_path: String = package.get("path").unwrap();
+                let parent_dir = path.as_ref().parent().unwrap();
+                let new_package_path = [
+                    &package_path,
+                    parent_dir.join("?.lua").to_str().unwrap(),
+                    parent_dir.join("?/init.lua").to_str().unwrap(),
+                ]
+                .join(";");
+                package.set("path", new_package_path).unwrap();
+                ctx.load(&code)
+                    .set_name(path.as_ref().to_str().unwrap())
+                    .unwrap()
+                    .exec()
+            })
+            .map_err(Right)
     }
 
     pub fn init(&self) -> LuaResult<()> {
