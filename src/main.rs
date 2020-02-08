@@ -6,7 +6,7 @@ use sched_test::*;
 
 fn main() {
     let ctx = script::ScriptContext::new();
-    if let Err(e) = ctx.init() {
+    if let Err(e) = ctx.init_lib() {
         eprintln!("{}", e);
         return;
     };
@@ -17,8 +17,7 @@ fn main() {
             return;
         }
     }
-    let init_file = config_dir.join("init.lua");
-    if let Err(e) = ctx.run_init_file(init_file) {
+    if let Err(e) = ctx.init_user(config_dir) {
         eprintln!("{}", e);
         return;
     };

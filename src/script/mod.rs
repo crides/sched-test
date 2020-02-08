@@ -64,30 +64,33 @@ impl ScriptContext {
         Self { lua: Lua::new() }
     }
 
-    pub fn run_init_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Either<IoError, LuaError>> {
-        let code = read_to_string(&path).map_err(Left)?;
+    pub fn init_user<P: AsRef<Path>>(
+        &self,
+        config_dir: P,
+    ) -> Result<(), Either<IoError, LuaError>> {
+        let init_file = config_dir.as_ref().join("init.lua");
+        let code = read_to_string(&init_file).map_err(Left)?;
         self.lua
             .context(|ctx| {
                 let globals = ctx.globals();
                 let package: LuaTable = globals.get("package").unwrap();
                 let package_path: String = package.get("path").unwrap();
-                let parent_dir = path.as_ref().parent().unwrap();
                 let new_package_path = [
                     &package_path,
-                    parent_dir.join("?.lua").to_str().unwrap(),
-                    parent_dir.join("?/init.lua").to_str().unwrap(),
+                    config_dir.join("?.lua").to_str().unwrap(),
+                    config_dir.join("?/init.lua").to_str().unwrap(),
                 ]
                 .join(";");
                 package.set("path", new_package_path).unwrap();
                 ctx.load(&code)
-                    .set_name(path.as_ref().to_str().unwrap())
+                    .set_name(init_file.to_str().unwrap())
                     .unwrap()
                     .exec()
             })
             .map_err(Right)
     }
 
-    pub fn init(&self) -> LuaResult<()> {
+    pub fn init_lib(&self) -> LuaResult<()> {
         self.lua.context(|ctx| {
             let globals = ctx.globals();
             globals.set(
