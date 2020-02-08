@@ -4,10 +4,7 @@ use std::{collections::HashMap, sync::Mutex};
 
 use crate::storage::{model::Log, LogStorage};
 
-use super::{
-    error::*,
-    state::API_STATE,
-};
+use super::{error::*, state::API_STATE};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogAttr {
@@ -39,11 +36,12 @@ where
     S1: AsRef<str>,
     S2: AsRef<str>,
 {
-    API_STATE.with(|s|
+    API_STATE.with(|s| {
         s.lock()
-        .unwrap()
-        .storage
-        .add_log_with_props(name, desc, props));
+            .unwrap()
+            .storage
+            .add_log_with_props(name, desc, props)
+    });
 }
 
 pub fn set_prop<S1, S2>(id: i32, key: S1, val: S2)
@@ -62,11 +60,7 @@ pub fn get_props_for(id: i32) -> HashMap<String, String> {
 }
 
 pub fn add_log_type(typ: LogType) {
-    API_STATE.with(|s|
-        s.lock()
-        .unwrap()
-        .log_types
-        .insert(typ.name, typ.attrs));
+    API_STATE.with(|s| s.lock().unwrap().log_types.insert(typ.name, typ.attrs));
 }
 
 pub fn add_log_types(typ: LogTypes) {
@@ -74,12 +68,7 @@ pub fn add_log_types(typ: LogTypes) {
 }
 
 pub fn get_log_type<S: AsRef<str>>(key: S) -> Option<LogAttrs> {
-    API_STATE.with(|s|
-        s.lock()
-        .unwrap()
-        .log_types
-        .get(key.as_ref())
-        .cloned())
+    API_STATE.with(|s| s.lock().unwrap().log_types.get(key.as_ref()).cloned())
 }
 
 pub fn get_log_types() -> LogTypes {
@@ -108,13 +97,11 @@ where
                         final_props.insert(key.into(), attr.default.clone());
                     }
                     Ok(())
-                },
-                None => {
-                    Err(Error {
-                        method: "add_log_with_type".into(),
-                        kind: ErrorKind::InvalidLogType(typ.into()),
-                    })
                 }
+                None => Err(Error {
+                    method: "add_log_with_type".into(),
+                    kind: ErrorKind::InvalidLogType(typ.into()),
+                }),
             }
         });
         if res.is_err() {

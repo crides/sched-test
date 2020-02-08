@@ -1,7 +1,7 @@
-use std::sync::Mutex;
 use std::collections::HashMap;
+use std::sync::Mutex;
 
-use super::{log::*, event::*};
+use super::{event::*, log::*};
 use crate::storage::LogStorage;
 
 pub struct APIState<'lua> {

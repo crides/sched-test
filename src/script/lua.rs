@@ -3,7 +3,7 @@
 
 use rlua::prelude::*;
 use rlua_serde::*;
-use rustyline::{Editor, Config};
+use rustyline::{Config, Editor};
 
 use crate::api::{LogAttr, LogType};
 

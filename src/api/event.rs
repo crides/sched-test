@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use chrono::{DateTime, Local, Duration};
+use chrono::{DateTime, Duration, Local};
 use rlua::prelude::*;
 
 pub enum Priority {
@@ -71,25 +71,19 @@ impl IntervalBuilder {
                         length: l,
                     })
                 }
-            },
-            (Some(s), None, Some(e)) => {
-                Ok(Interval {
-                    start: s,
-                    length: e - s,
-                })
-            },
-            (Some(s), Some(l), None) => {
-                Ok(Interval {
-                    start: s,
-                    length: l,
-                })
-            },
-            (None, Some(l), Some(e)) => {
-                Ok(Interval {
-                    start: e - l,
-                    length: l,
-                })
-            },
+            }
+            (Some(s), None, Some(e)) => Ok(Interval {
+                start: s,
+                length: e - s,
+            }),
+            (Some(s), Some(l), None) => Ok(Interval {
+                start: s,
+                length: l,
+            }),
+            (None, Some(l), Some(e)) => Ok(Interval {
+                start: e - l,
+                length: l,
+            }),
             _ => Err(IntervalBuildError::NotEnoughConstraints),
         }
     }
@@ -134,10 +128,7 @@ pub struct Event<'lua> {
 
 impl<'lua> Event<'lua> {
     pub fn new(inner: EventCommon<'lua>, interval: Interval) -> Self {
-        Self {
-            inner,
-            interval,
-        }
+        Self { inner, interval }
     }
 }
 
