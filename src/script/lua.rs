@@ -1,6 +1,9 @@
+//! All the Lua helper functions/APIs that doesn't have anything to do with the core Logging and
+//! Event APIs.
+
 use rlua::prelude::*;
 use rlua_serde::*;
-use rustyline::Editor;
+use rustyline::{Editor, Config};
 
 use crate::api::{LogAttr, LogType};
 
@@ -25,6 +28,50 @@ impl<'lua> FromLua<'lua> for LogAttr {
 impl<'lua> ToLua<'lua> for LogAttr {
     fn to_lua(self, ctx: LuaContext<'lua>) -> LuaResult<LuaValue<'lua>> {
         to_value(ctx, self)
+    }
+}
+
+pub fn repl(ctx: LuaContext) {
+    let mut editor = Editor::<()>::with_config(Config::builder().tab_stop(4).build());
+    loop {
+        let mut prompt = "> ";
+        let mut line = String::new();
+        loop {
+            match editor.readline(prompt) {
+                Ok(input) => line.push_str(&input),
+                Err(_) => return,
+            }
+
+            match ctx.load(&line).eval::<LuaMultiValue>() {
+                Ok(values) => {
+                    editor.add_history_entry(line);
+                    println!(
+                        "{}",
+                        values
+                            .iter()
+                            .map(|value| format_value(value, &ctx))
+                            .collect::<Vec<_>>()
+                            .join("\t")
+                    );
+                    break;
+                }
+                Err(LuaError::SyntaxError {
+                    incomplete_input: true,
+                    ..
+                }) => {
+                    // continue reading input and append it to `line`
+                    line.push_str("\n"); // separate input lines
+                    prompt = ">> ";
+                }
+                Err(e) => {
+                    eprintln!("error: {}", e);
+                    if let LuaError::CallbackError { cause: c, .. } = e {
+                        println!("Caused by: {}", c);
+                    }
+                    break;
+                }
+            }
+        }
     }
 }
 
