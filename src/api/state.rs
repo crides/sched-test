@@ -2,18 +2,16 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use super::{event::*, log::*};
-use crate::storage::LogStorage;
+use crate::storage::Storage;
 
 pub struct APIState<'lua> {
     pub(crate) storage: LogStorage,
     pub(crate) log_types: LogTypes,
-    pub(crate) events: Vec<EventType<'lua>>,
 }
 
-thread_local! {
+lazy_static! {
     pub static API_STATE: Mutex<APIState<'static>> = Mutex::new(APIState {
-        storage: LogStorage::new(),
+        storage: Storage::new(),
         log_types: HashMap::new(),
-        events: Vec::new(),
     });
 }

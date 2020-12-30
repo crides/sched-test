@@ -7,17 +7,14 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rusqlite = "^0.20"
-diesel = { version = "1.4.3", features = ["sqlite", "chrono"] }
-chrono = { version = "*", features = ["serde"] }
+chrono = { version = "0.4.13", features = ["serde"] }
 # clap = "*"
-rlua = "*"
-rustyline = "5.0.6"
-serde = "*"
-serde_derive = "*"
-# Currently `rlua_serde` won't convert an empty table to an empty vec, so using
-# this instead, until the pull request (#9) is merged (also see issue #8)
-rlua_serde = "*"
-lazy_static = "*"
-dirs = "*"
-either = "*"
+redis = { version = "0.16.0", default-features = false, features = ["script"] }
+rlua = "0.17.0"
+rustyline = "6.2.0"
+serde = "1.0.114"
+serde_derive = "1.0.114"
+rlua_serde = "0.4.0"
+lazy_static = "1.4.0"
+dirs = "3.0.1"
+either = "1.5.3"

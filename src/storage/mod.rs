@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use diesel::{prelude::*, sqlite::SqliteConnection};
+use redis::{Connection, Commands, Client};
 
 pub mod model;
 mod schema;
@@ -8,11 +8,12 @@ mod schema;
 use model::*;
 use schema::{attrs, logs};
 
-pub struct LogStorage(SqliteConnection);
+pub struct LogStorage(Connection);
 
 impl LogStorage {
     pub fn new() -> LogStorage {
-        LogStorage(SqliteConnection::establish("test.db").unwrap())
+        let conn = Client::open("localhost").unwrap();
+        LogStorage(conn)
     }
 
     pub fn add_log<S1, S2>(&mut self, name: S1, desc: S2) -> i32
